@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
+#include "groundTileMap.h"
 #include <math.h>
 #include <string>
 #include <fstream>
@@ -22,123 +23,61 @@ void draw(RenderWindow *window);
 
 float toDegrees(float radians);
 int toPixels(float position);
-bool isSolid(int tileNum);
+b2Vec2 rotate(b2Vec2 vector, float degrees);
 
-class groundTileMap : public sf::Drawable, public sf::Transformable
+class Wheels
 {
 public:
-    groundTileMap() { }
-    void genGroundTileMap (const char* filename, Texture nTexture, int tilesW, int tilesH
-                           , int textureTileGridWidth, b2World *world)
+    Wheels(float startRotation, float maxRotation
+           , float startSpeed, float frameFriction
+           , float frameSteerFriction)
         {
-            texture = nTexture;
-            tilesWidth = tilesW;
-            tilesHeight = tilesH;
-            std::ifstream bitmap(filename);
-            char buf[10];
-            bitmap >> buf;
-            bitmap >> width >> height;
-            bitmap >> buf; // The range of the grayscale
-                           // Not needed for reading for us
-            vertices.setPrimitiveType(Quads);
-            vertices.resize(4 * width * height);
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int indexInVertexArray = 4 * (width * y + x), tileNum;
-                    bitmap >> tileNum; // The grayscale value
-                                       // of the corresponding pixel
-                    
-                    // Rotation
-                    int rotation = tileNum % 4;
-                    tileNum /= 4;
+            relRotation = startRotation;
+            maxRelRotation = maxRotation;
+            speed = startSpeed;
+            friction = frameFriction;
+            steerFriction = frameSteerFriction;
+            turned = false;
+        }
 
-                    std::cout << tileNum << " ";
-                    
-                    int cornerTextureX = (tileNum % textureTileGridWidth) * tilesWidth
-                        , cornerTextureY = (tileNum / textureTileGridWidth) * tilesHeight;
-                    // Top left corner
-                    vertices[indexInVertexArray+0].position
-                        = Vector2f(x * tilesWidth
-                                   , y * tilesHeight);
-                    // Top right corner
-                    vertices[indexInVertexArray+1].position
-                        = Vector2f((x + 1) * tilesWidth
-                                   , y * tilesHeight);
-                    // Bottom right corner
-                    vertices[indexInVertexArray+2].position
-                        = Vector2f((x + 1) * tilesWidth
-                                   , (y + 1) * tilesHeight);
-                    // Bottom left corner
-                    vertices[indexInVertexArray+3].position
-                        = Vector2f(x * tilesWidth
-                                   , (y + 1) * tilesHeight);
+    void update()
+        {
+            speed *= friction;
+            if (!turned)
+                relRotation *= steerFriction;
+            turned = false;
+        }
 
-                    int turnArray[4] = {0,1,2,3};
-                    if (rotation == 1) {
-                        turnArray[0] = 1;
-                        turnArray[1] = 2;
-                        turnArray[2] = 3;
-                        turnArray[3] = 0;
-                    } else if (rotation == 2) {
-                        turnArray[0] = 2;
-                        turnArray[1] = 3;
-                        turnArray[2] = 0;
-                        turnArray[3] = 1;
-                    } else if (rotation == 3) {
-                        turnArray[0] = 3;
-                        turnArray[1] = 0;
-                        turnArray[2] = 1;
-                        turnArray[3] = 2;
-                    }
-                    // Texture Coords
-                    // Top left corner
-                    vertices[indexInVertexArray+turnArray[0]].texCoords
-                        = Vector2f(cornerTextureX
-                                   , cornerTextureY);
-                    // Top right corner
-                    vertices[indexInVertexArray+turnArray[1]].texCoords
-                        = Vector2f(cornerTextureX + tilesWidth
-                                   , cornerTextureY);
-                    // Bottom right corner
-                    vertices[indexInVertexArray+turnArray[2]].texCoords
-                        = Vector2f(cornerTextureX + tilesWidth
-                                   , cornerTextureY + tilesHeight);
-                    // Bottom left corner
-                    vertices[indexInVertexArray+turnArray[3]].texCoords
-                        = Vector2f(cornerTextureX
-                                   , cornerTextureY + tilesHeight);
+    void addSpeed(float extra)
+        {
+            speed += extra;
+        }
 
-                    
-                    // Adding a physical box if necessary
-                    if (isSolid(tileNum)) {
-                        b2BodyDef boxBodyDef;
-                        boxBodyDef.position.Set((float)((float)(x + 0.5) * tilesWidth)
-                                             / (float) (SCALE)
-                                             , (float)((float)(y + 0.5) * tilesWidth)
-                                             / (float) (SCALE));
-                        b2Body *boxBody = world->CreateBody(&boxBodyDef);
+    void setSpeed(float newSpeed)
+        {
+            speed = newSpeed;
+        }
 
-                        b2PolygonShape boxBodyShape;
-                        boxBodyShape.SetAsBox((float)(tilesWidth) / (2 * SCALE)
-                                              , (float)(tilesHeight) / (2 * SCALE));
-                        boxBody->CreateFixture(&boxBodyShape, 0.0f);
-                    }
-                }
-                std::cout << "\n"; // debug
-            }
+    void turn(float rotation)
+        {
+            relRotation += rotation;
+            relRotation = relRotation > maxRelRotation ?
+                maxRelRotation : relRotation;
+            relRotation = relRotation < (-1 * maxRelRotation) ?
+                (-1 * maxRelRotation) : relRotation;
+            turned = true;
+        }
+
+    b2Vec2 getForce(float rotation)
+        {
+            return b2Vec2(speed * sin(relRotation + rotation)
+                          , -1 * speed * cos(relRotation + rotation));
         }
 
 private:
-    virtual void draw (RenderTarget& target, RenderStates states) const
-        {
-            states.transform *= getTransform();
-            states.texture = &texture;
-            target.draw(vertices, states);
-        }
-    int width, height;
-    VertexArray vertices;
-    Texture texture;
-    int tilesWidth, tilesHeight;
+    float relRotation, maxRelRotation, speed,  friction
+        , steerFriction;
+    bool turned;
 };
 
 Texture playerCarTex;
@@ -158,8 +97,12 @@ int positionIterations = 3;
 
 RectangleShape testBackgroundSquare(Vector2f(1920, 1080));
 
+Wheels playercarWheels(0, (PI / 4), 0, 0.96, 0.95);
+
 int main()
 {
+    b2Vec2 testVec = rotate(b2Vec2(0,1), PI / 6);
+    std::cout << testVec.x << " " << testVec.y << "\n";
     RenderWindow window(VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Test");
     window.setVerticalSyncEnabled(true);
     window.setView(playerView);
@@ -180,7 +123,7 @@ int main()
     b2BodyDef playerBodyDef;
     playerBodyDef.type = b2_dynamicBody;
     playerBodyDef.position.Set(2.0f, 2.0f);
-    playerBodyDef.linearDamping = 0.4f;
+    playerBodyDef.linearDamping = 2.4f;
     playerBodyDef.angularDamping = 5.0f;
     playerBody = world.CreateBody(&playerBodyDef);
 
@@ -225,38 +168,48 @@ void keyboardInput(RenderWindow *window)
 {
     if(Keyboard::isKeyPressed(Keyboard::W)
        || Keyboard::isKeyPressed(Keyboard::Up)) {
-        playerBody->ApplyForce(b2Vec2( -10 * cos(playerBody->GetAngle()
-                                                 + PI / 2 + PI * 2
-                                           )
-                                     , -10 * sin(playerBody->GetAngle()
-                                                 + PI / 2 + PI * 2
-                                         ))
-                                     , playerBody->GetWorldCenter(), true);
+        // playerBody->ApplyForce(b2Vec2( -10 * cos(playerBody->GetAngle()
+        //                                          + PI / 2 + PI * 2
+        //                                    )
+        //                              , -10 * sin(playerBody->GetAngle()
+        //                                          + PI / 2 + PI * 2
+        //                                  ))
+        //                              , playerBody->GetWorldCenter(), true);
+        playercarWheels.addSpeed(0.5);
     }
     if(Keyboard::isKeyPressed(Keyboard::S)
        || Keyboard::isKeyPressed(Keyboard::Down)) {
-        playerBody->ApplyForce(b2Vec2( 5 * cos(playerBody->GetAngle()
-                                                + PI / 2 + PI * 2
-                                           )
-                                     , 5 * sin(playerBody->GetAngle()
-                                                + PI / 2 + PI * 2
-                                         ))
-                                     , playerBody->GetWorldCenter(), true);
+        // playerBody->ApplyForce(b2Vec2( 5 * cos(playerBody->GetAngle()
+        //                                         + PI / 2 + PI * 2
+        //                                    )
+        //                              , 5 * sin(playerBody->GetAngle()
+        //                                         + PI / 2 + PI * 2
+        //                                  ))
+        //                              , playerBody->GetWorldCenter(), true);
+        playercarWheels.addSpeed(-0.5);
     }
     if(Keyboard::isKeyPressed(Keyboard::A)
        || Keyboard::isKeyPressed(Keyboard::Left)) {
-        playerBody->ApplyTorque(-5, true);
-        // playerBody->ApplyForce(b2Vec2(-10,0) player
+        // playerBody->ApplyTorque(-5, true);
+        playercarWheels.turn(-0.1);
     }
     if(Keyboard::isKeyPressed(Keyboard::D)
        || Keyboard::isKeyPressed(Keyboard::Right)) {
-        playerBody->ApplyTorque(5, true);
+        // playerBody->ApplyTorque(5, true);
+        playercarWheels.turn(0.1);
     }
 }
 
 void update(RenderWindow *window)
 {
     playerView.setCenter(playerCar.getPosition());
+    playercarWheels.update();
+    // b2Vec2 debug = rotate(playercarWheels.getRelativeForce()
+    //                       , 1 * playerBody->GetAngle() + PI / 2);
+    // std::cout << (int) (debug.x) << " " << (int) (debug.y) << "\n"; 
+    playerBody->ApplyForce(playercarWheels.getForce(playerBody->GetAngle())
+                           , playerBody->GetWorldCenter()
+                           + rotate(b2Vec2(0, -0.3),playerBody->GetAngle()), true);
 }
 
 void simulatePhysics(RenderWindow *window)
@@ -289,6 +242,9 @@ int toPixels(float position)
     return position * SCALE;
 }
 
-bool isSolid(int tileNum) {
-    return tileNum == 9;
+b2Vec2 rotate(b2Vec2 vector, float degrees)
+{
+    float x = vector.x * cos(degrees) - vector.y * sin(degrees);
+    float y = vector.x * sin(degrees) + vector.y * cos(degrees);
+    return b2Vec2(x, y);
 }
