@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
 bool isSolid(int tileNum);
+char getDisplayChar(int tileNum);
 
 class groundTileMap : public sf::Drawable, public sf::Transformable
 {

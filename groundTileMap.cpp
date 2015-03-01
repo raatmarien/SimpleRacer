@@ -36,7 +36,7 @@ void groundTileMap::genGroundTileMap (const char* filename, Texture nTexture
             int rotation = tileNum % 4;
             tileNum /= 4;
 
-            std::cout << tileNum << " ";
+            std::cout << getDisplayChar(tileNum) << " ";
             
             int cornerTextureX = (tileNum % textureTileGridWidth)
                 * tilesWidth
@@ -125,3 +125,25 @@ bool isSolid(int tileNum)
 {
     return tileNum == 9;
 }
+
+char getDisplayChar(int tileNum)
+{
+    switch (tileNum) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 7:
+    case 6:
+    case 5:
+    case 0:
+        return 'X';
+        break;
+    case 9:
+        return 'O';
+        break;
+    default:
+        return ' ';
+    }
+}
+    
