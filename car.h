@@ -1,4 +1,6 @@
+#pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <Box2D/Box2D.h>
 
 class Wheel
@@ -27,7 +29,7 @@ public:
     void initialize(float nSpeedAdd, float nFriction, float nRotationSpeed
                     , float  nMaxRotation, float nRotationReturn
                     , sf::Texture nTexture, b2Vec2 nSize, int nScale, b2World *nWorld
-                    , b2Vec2 nPosition);
+                    , b2Vec2 nPosition, bool nBox, bool nSound);
     void update();
     void move(bool forward);
     void turn(bool left);
@@ -36,12 +38,16 @@ private:
     float speedAdd, friction, rotationSpeed, maxRotation
         , rotationReturn;
     int scale;
+    bool box, sound;
     b2Vec2 size;
     Wheel leftFront, rightFront, leftBack, rightBack;
     sf::Texture texture;
     b2Body *carBody;
     sf::Sprite car;
     b2World *world;
+    sf::SoundBuffer engineBuf[5];
+    int soundLevel;
+    sf::Sound engineSound;
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
     float toDegrees(float radians);
     int toPixels(float position);

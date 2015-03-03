@@ -8,11 +8,11 @@ class groundTileMap : public sf::Drawable, public sf::Transformable
 public:
     void genGroundTileMap (const char* filename, sf::Texture nTexture
                            , int tilesW, int tilesH
-                           , int textureTileGridWidth, b2World *world);
+                           , int textureTileGridWidth, b2World *world, int nScale);
 
 private:
     virtual void draw (sf::RenderTarget& target, sf::RenderStates states) const;
-    int width, height;
+    int width, height, SCALE;
     sf::VertexArray vertices;
     sf::Texture texture;
     int tilesWidth, tilesHeight;

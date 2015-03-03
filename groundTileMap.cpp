@@ -4,20 +4,17 @@
 #include <fstream>
 #include <iostream>
 
-#ifndef SCALE
- #define SCALE 100
-#endif
-
 using namespace sf;
 
 void groundTileMap::genGroundTileMap (const char* filename, Texture nTexture
                                       , int tilesW, int tilesH
                                       , int textureTileGridWidth
-                                      , b2World *world)
+                                      , b2World *world, int nScale)
 {
     texture = nTexture;
     tilesWidth = tilesW;
     tilesHeight = tilesH;
+    SCALE = nScale;
     std::ifstream bitmap(filename);
     char buf[10];
     bitmap >> buf;
@@ -26,7 +23,14 @@ void groundTileMap::genGroundTileMap (const char* filename, Texture nTexture
                    // Not needed for reading for us
     vertices.setPrimitiveType(Quads);
     vertices.resize(4 * width * height);
+    for (int i = 0; i < width; i++) {
+        std::cout << i;
+        if (i < 10) 
+            std::cout << ' ';
+    }
+    std::cout << '\n';
     for (int y = 0; y < height; y++) {
+            std::cout << y;
         for (int x = 0; x < width; x++) {
             int indexInVertexArray = 4 * (width * y + x), tileNum;
             bitmap >> tileNum; // The grayscale value
