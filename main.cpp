@@ -3,6 +3,7 @@
 #include "car.h"
 #include "groundTileMap.h"
 #include "carTimer.h"
+#include "carAI.h"
 #include <math.h>
 #include <string>
 #include <fstream>
@@ -35,6 +36,8 @@ Texture tileMapTex;
 groundTileMap tileMap;
 
 carTimer playerCarTimer, playerTwoCarTimer;
+
+carAI ai1;
 
 View playerView(FloatRect(0, 0, 1920, 1080))
     , playerTwoView(FloatRect(0,0,960,540));
@@ -71,12 +74,12 @@ int main()
     playerCar.initialize(0.3f, 0.987f, 0.03f, (PI / 4), 0.9f, playerCarTex
                          , b2Vec2(PLAYER_WIDTH, PLAYER_HEIGHT), SCALE
                          , &world, b2Vec2(350,4000), boxCars, sound);
-    if (twoPlayers) {
-        playerTwoCar.initialize(0.3f, 0.987f, 0.03f, (PI / 4), 0.9f, playerCarTex
-                             , b2Vec2(PLAYER_WIDTH, PLAYER_HEIGHT), SCALE
-                                , &world, b2Vec2(250,4000), boxCars, sound);
-    }
-
+    // if (twoPlayers) {
+    playerTwoCar.initialize(0.3f, 0.987f, 0.03f, (PI / 4), 0.9f, playerCarTex
+                            , b2Vec2(PLAYER_WIDTH, PLAYER_HEIGHT), SCALE
+                            , &world, b2Vec2(250,4000), boxCars, sound);
+    // }
+    
     // Set up carTimer
     int tS = 50; // Tilesize
     // Set up waypoints
@@ -93,14 +96,18 @@ int main()
     timerText.setColor(Color::White);
     playerCarTimer.initialize(SCALE, &playerCar, wayPoints, 4000, 0, 1000
                               , 700, timerText);
-    if (twoPlayers) {
-        playerTwoCarTimer.initialize(SCALE, &playerTwoCar, wayPoints, 4000, 0, 1000
-                                     , 700, timerText);
-    }
+    // if (twoPlayers) {
+    playerTwoCarTimer.initialize(SCALE, &playerTwoCar, wayPoints, 4000, 0, 1000
+                                 , 700, timerText);
+    // }
 
     // Set up groundTileMap
     tileMap.genGroundTileMap("sprites/big_tilesmap_3.pgm", tileMapTex, 50
                              , 50, 5, &world, SCALE);
+
+    if (!twoPlayers) {
+        ai1.initialize(&playerTwoCar, &tileMap, 500, 0.01, Vector2f(250,4000));
+    }
 
     playerCarTimer.start();
     while(window.isOpen()) {
@@ -200,6 +207,13 @@ void update(RenderWindow *window)
                                       + Vector2f(20,20));
         playerTwoCar.update();
         playerTwoCarTimer.update();
+    } else {
+        ai1.update();
+        playerTwoCarTimer.update();
+        playerTwoCarTimer.setPosition(playerCar.getPosition()
+                                      + (Vector2f(playerView.getSize().x / 2
+                                                  , -playerView.getSize().y / 2))
+                                      - Vector2f(200,-20));
     }
 }
 
@@ -216,8 +230,11 @@ void draw(RenderWindow *window)
     window->draw(tileMap);
     window->draw(playerCar);
     window->draw(playerCarTimer);
-    if (twoPlayers) {
         window->draw(playerTwoCar);
+        if (!twoPlayers) {
+        window->draw(playerTwoCarTimer);
+        }
+    if (twoPlayers) {
         border.setSize(Vector2f(3, playerView.getSize().y));
         border.setFillColor(Color::Black);
         border.setOrigin(0,0);

@@ -201,6 +201,11 @@ b2Vec2 Car::rotateVec(b2Vec2 vector, float degrees)
     return b2Vec2(x, y);
 }
 
+float Car::getRotation()
+{
+    return leftFront.getRotation() + carBody->GetAngle();
+}
+
 Wheel::Wheel() { }
 
 void Wheel::initialize(float startRotation, float maxRotation
@@ -241,6 +246,11 @@ void Wheel::turn(float rotation)
     relRotation = relRotation < (-1 * maxRelRotation) ?
         (-1 * maxRelRotation) : relRotation;
     turned = true;
+}
+
+float Wheel::getRotation()
+{
+    return relRotation;
 }
 
 b2Vec2 Wheel::getForce(float rotation)

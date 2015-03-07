@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
 #include <fstream>
+#include <vector>
 #include <iostream>
 
 using namespace sf;
@@ -39,6 +40,10 @@ void groundTileMap::genGroundTileMap (const char* filename, Texture nTexture
             // Rotation
             int rotation = tileNum % 4;
             tileNum /= 4;
+
+            if (tileNum == 7)
+                wayPoints.push_back(Vector2f((x + 0.5) * tilesWidth
+                                             , (y + 0.5) * tilesWidth));
 
             std::cout << getDisplayChar(tileNum) << " ";
             
@@ -123,6 +128,11 @@ void groundTileMap::draw(RenderTarget& target, RenderStates states) const
     states.transform *= getTransform();
     states.texture = &texture;
     target.draw(vertices, states);
+}
+
+std::vector<Vector2f> groundTileMap::getWayPoints()
+{
+    return wayPoints;
 }
 
 bool isSolid(int tileNum)
